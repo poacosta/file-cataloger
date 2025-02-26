@@ -108,6 +108,20 @@ def catalog_files(root_dir, output_csv, file_extensions=None,
     int
         Total number of files processed
     """
+    # Calculate max chunks based on memory limit (rough estimate)
+    # Assume each file record takes ~200 bytes in memory
+    estimated_bytes_per_record = 200
+    max_records_in_memory = int((memory_limit_gb * 1024 * 1024 * 1024) / estimated_bytes_per_record)
+
+    # Adjust batch_size if it would exceed memory limit
+    if batch_size > max_records_in_memory:
+        adjusted_batch_size = max(10000, max_records_in_memory // 2)  # Ensure minimum batch size
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"Batch size ({batch_size}) would exceed memory limit of {memory_limit_gb}GB. "
+            f"Adjusting to {adjusted_batch_size}."
+        )
+        batch_size = adjusted_batch_size
     logger = setup_logging()
 
     # Convert extensions to lowercase set for faster lookup if provided
@@ -133,8 +147,10 @@ def catalog_files(root_dir, output_csv, file_extensions=None,
     file_counter = 0
     is_first_batch = True
 
-    # Process directories in chunks
-    directory_chunks = [all_directories[i:i + 1000] for i in range(0, len(all_directories), 1000)]
+    # Process directories in chunks sized based on memory limit
+    # Each directory might use ~500 bytes of memory overhead
+    dir_chunk_size = min(1000, int(max_records_in_memory / 50))
+    directory_chunks = [all_directories[i:i + dir_chunk_size] for i in range(0, len(all_directories), dir_chunk_size)]
 
     for chunk_idx, dir_chunk in enumerate(directory_chunks):
         logger.info(f"Processing directory chunk {chunk_idx + 1}/{len(directory_chunks)}")
