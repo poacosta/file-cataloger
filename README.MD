@@ -1,38 +1,57 @@
-# 📂 File Cataloger: Path Pattern Explorer
+# 📂 File Cataloger: Path & Metadata Explorer
 
-> Unearth the hidden patterns in your massive directory structures and prepare datasets for meaningful exploration.
+> Unearth the hidden patterns in your massive directory structures with comprehensive metadata extraction for enhanced
+> dataset exploration.
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Ever stared into the abyss of a filesystem with 500,000+ files and wondered "what's actually in here?" File Cataloger
-transforms chaotic directory structures into clean, analyzable datasets that reveal the underlying patterns in your
-digital organization.
+transforms chaotic directory structures into rich, analyzable datasets that reveal both organizational patterns and
+content insights through detailed metadata extraction.
 
-## 🔍 The Dataset Preparation Journey
+This tool transforms raw filesystem hierarchy into a structured dataset with comprehensive metadata:
 
-This tool isn't about indexing for its own sake – it's about creating a foundation for exploration and insight:
+1. **Path & Name Extraction**: Capture the basic organizational structure
+2. **Metadata Mining**: Extract timestamps, sizes, and file characteristics
+3. **Image Intelligence**: Detect and analyze image dimensions, formats, and EXIF data
+4. **Pattern Discovery**: Enable rich analysis across both organizational and content dimensions
 
-1. **Harvest**: Efficiently extract filename and path data from massive directory structures
-2. **Transform**: Convert hierarchical file structures into a flat, analyzable CSV format
-3. **Explore**: Enable pattern discovery across directories, naming conventions, and file distributions
-4. **Insight**: Turn raw file system data into actionable organization intelligence
+## 🚀 Key Features
 
-## 🚀 Features That Actually Matter
+- **Scale-Ready**: Efficiently handles 500k+ files across 1M+ directories
+- **Metadata-Rich**: Extracts comprehensive file information including timestamps, sizes, and MIME types
+- **Image Expertise**: Automatically detects images and extracts dimensions, format, and EXIF data
+- **Memory-Conscious**: Batch processing and garbage collection prevent system slowdowns
+- **Parallel Performance**: Multiprocessing maximizes throughput without sacrificing stability
+- **Flexible Depth**: Choose between fast basic scans or deep metadata extraction
 
-- **Scales Like a Champion**: Effortlessly handles 500k+ files across 1M+ directories
-- **Respects Your RAM**: Memory-efficient batch processing prevents your system from melting down
-- **Speed Without Sacrifice**: Parallel processing gets results faster without trading off reliability
-- **Fault Forgiveness**: Gracefully skips permission-restricted directories instead of crashing
-- **Focus Flexibility**: Filter for specific file types or catalog everything – you decide
+## 📊 Extracted Metadata
+
+### For All Files
+
+- **Filename & Path**: Complete organizational information
+- **File Extension**: Standardized lowercase extension
+- **Size**: File size in bytes
+- **Timestamps**: Creation, modification, and access times
+- **MIME Type**: Content type detection
+
+### Additional Image Metadata
+
+- **Dimensions**: Width and height in pixels
+- **Format**: Image format identification (JPEG, PNG, etc.)
+- **Color Mode**: RGB, CMYK, grayscale, etc.
+- **EXIF Timestamp**: Extracted from image metadata when available
+- **Image Validation**: Confirms files are actually valid images regardless of extension
 
 ## 🧰 The Technical Bits
 
 ### Requirements
 
-- Python 3.10+
+- Python 3.9+
 - pandas (for data transformation)
 - tqdm (for sanity-preserving progress bars)
+- Pillow (PIL) for image processing
 
 ### Setup
 
@@ -45,35 +64,47 @@ cd file-cataloger
 pip install -r requirements.txt
 ```
 
-### Usage Patterns
+## 💡 Usage Examples
 
-For quick exploration (moderate directory size):
+### Basic Usage - Full Metadata Extraction
 
 ```bash
 python file_cataloger.py /path/to/your/directory
 ```
 
-For serious data archaeology (massive directory structures):
+### Performance-Focused Scan (Skip Detailed Metadata)
+
+```bash
+python file_cataloger.py /path/to/your/directory --basic
+```
+
+### Focus on Image Files
+
+```bash
+python file_cataloger.py /path/to/your/directory --extensions jpg jpeg png webp gif
+```
+
+### Optimize for High-Performance Systems
 
 ```bash
 python file_cataloger.py /path/to/your/directory \
-  --output dataset.csv \
-  --batch-size 50000 \
-  --workers 8 \
-  --memory-limit 6 \
-  --verbose
+  --workers 16 \
+  --memory-limit 16 \
+  --batch-size 200000
 ```
 
-### Command Arguments Explained
+## Command Arguments Explained
 
-| Argument         | Short | What It Actually Does                            | Default            |
-|------------------|-------|--------------------------------------------------|--------------------|
-| `--output`       | `-o`  | Where to save your CSV treasure map              | `file_catalog.csv` |
-| `--extensions`   | `-e`  | Focus on specific file types (e.g., `.jpg .png`) | All files          |
-| `--batch-size`   | `-b`  | Files per processing batch (lower = less RAM)    | 100000             |
-| `--workers`      | `-w`  | CPU cores to utilize                             | CPU count - 1      |
-| `--memory-limit` | `-m`  | RAM ceiling in GB                                | 4                  |
-| `--verbose`      | `-v`  | Get chatty progress updates                      | False              |
+| Argument         | Short | Description                         | Default            |
+|------------------|-------|-------------------------------------|--------------------|
+| `--output`       | `-o`  | Output CSV file path                | `file_catalog.csv` |
+| `--extensions`   | `-e`  | Specific file extensions to include | All files          |
+| `--batch-size`   | `-b`  | Files per processing batch          | 100000             |
+| `--workers`      | `-w`  | CPU cores to utilize                | CPU count - 1      |
+| `--memory-limit` | `-m`  | RAM ceiling in GB                   | 4                  |
+| `--verbose`      | `-v`  | Enable detailed logging             | False              |
+| `--metadata`     | `-md` | Extract detailed metadata           | True               |
+| `--basic`        |       | Skip detailed metadata (faster)     | False              |
 
 ### Examples
 
@@ -152,74 +183,30 @@ Processing directories: 100%|█████████████████
 2025-02-26 13:13:04 - INFO - Cataloging complete. Total of 371091 files found.
 ```
 
-## 🧠 From Raw Data to Pattern Discovery
+## 📊 Real-World Applications
 
-Once you've generated your dataset, the real exploration begins. Here are some starting points for pattern mining:
+- **Digital Asset Management**: Analyze image collections by dimensions, format, and creation dates
+- **Photography Workflows**: Identify inconsistent image formats or metadata across photo libraries
+- **Storage Optimization**: Find duplicate or similar images based on dimensions and other properties
+- **Content Organization**: Discover patterns in file organization vs. actual content characteristics
+- **Time Series Analysis**: Track file creation patterns across timestamps and directories
 
-```python
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+## 🛠️ Troubleshooting
 
-# Load your dataset (for datasets that fit in memory)
-df = pd.read_csv('file_catalog.csv')
+| Issue                     | Solution                                                   |
+|---------------------------|------------------------------------------------------------|
+| **Slow Image Processing** | Use `--basic` flag to skip detailed metadata extraction    |
+| **Memory Pressure**       | Decrease `--batch-size` or increase `--memory-limit`       |
+| **PIL Errors**            | Ensure Pillow is properly installed (`pip install pillow`) |
+| **Incomplete EXIF Data**  | Normal - not all images contain complete EXIF information  |
 
-# Directory depth analysis
-df['directory_depth'] = df['Path'].apply(lambda x: len(x.split('/')))
-depth_counts = df['directory_depth'].value_counts().sort_index()
+## 🔮 Future Enhancements
 
-# Filename pattern extraction
-df['filename_pattern'] = df['Filename'].str.extract(r'(.+?)[\d_-]')[0]
-pattern_counts = df['filename_pattern'].value_counts().head(20)
-
-# Visualization example
-plt.figure(figsize=(12, 6))
-sns.barplot(x=pattern_counts.index, y=pattern_counts.values)
-plt.title('Top 20 Filename Patterns')
-plt.xticks(rotation=45)
-plt.tight_layout()
-plt.savefig('filename_patterns.png')
-```
-
-### Scaling to Massive Datasets
-
-For datasets too large for memory, use chunked processing:
-
-```python
-def analyze_chunked(csv_path, chunk_size=100000):
-    patterns = {}
-    directory_depths = {}
-
-    for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
-        # Update pattern counts
-        chunk_patterns = chunk['Filename'].str.extract(r'(.+?)[\d_-]')[0]
-        for pattern, count in chunk_patterns.value_counts().items():
-            if pd.notna(pattern):
-                patterns[pattern] = patterns.get(pattern, 0) + count
-
-        # Update directory depth counts
-        chunk['depth'] = chunk['Path'].apply(lambda x: len(x.split('/')))
-        for depth, count in chunk['depth'].value_counts().items():
-            directory_depths[depth] = directory_depths.get(depth, 0) + count
-
-    return patterns, directory_depths
-```
-
-## 💡 Real-World Applications
-
-- **Dataset Organization**: Identify inconsistent naming patterns across research datasets
-- **Migration Planning**: Map your current file structure before a system migration
-- **Storage Optimization**: Find duplicate organization patterns wasting space
-- **Digital Asset Management**: Discover how your digital assets are actually organized vs. how you think they are
-
-## 🛠️ When Things Go Sideways
-
-| Issue                 | The Fix                                                                            |
-|-----------------------|------------------------------------------------------------------------------------|
-| **Permission Errors** | Run with appropriate privileges or use `--verbose` to identify problem directories |
-| **Memory Pressure**   | Decrease `--batch-size` or increase `--memory-limit` if you have RAM to spare      |
-| **Performance Crawl** | Bump up `--workers` to match your available CPU cores                              |
-| **CSV Too Massive**   | Use the chunked processing approach for analysis (see example code)                |
+- **Content Similarity**: Add perceptual hashing for image similarity detection
+- **EXIF Deep Dive**: Extract GPS coordinates, camera models, and other rich EXIF data
+- **Duplicate Detection**: Add file content hashing (currently stubbed but commented out for performance)
+- **Format Validation**: Detect file format mismatches between extension and actual content
+- **Interactive Visualization**: Web dashboard for exploring the dataset visually
 
 ## 📝 License
 
