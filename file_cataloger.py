@@ -6,6 +6,7 @@ import logging
 import mimetypes
 import multiprocessing as mp
 import os
+import re
 import time
 from datetime import datetime
 from functools import partial
@@ -212,7 +213,68 @@ def process_file(file_path, root_path):
         return None
 
 
-def process_directory(directory, root_path, file_extensions=None, include_metadata=True, chunk_size=10000):
+def compile_filename_exclusion_patterns(exclude_patterns):
+    """
+    Compile SQL-like wildcard patterns into regex patterns.
+
+    Parameters:
+    -----------
+    exclude_patterns : list
+        List of SQL-like patterns (e.g., '%word', 'word%', '%word%')
+
+    Returns:
+    --------
+    list
+        List of compiled regex patterns
+    """
+    if not exclude_patterns:
+        return []
+
+    compiled_patterns = []
+    for pattern in exclude_patterns:
+        # Convert SQL LIKE wildcards to regex
+        # % becomes .* (match any character 0 or more times)
+        # _ becomes . (match any single character)
+        regex_pattern = pattern.replace('%', '.*').replace('_', '.')
+        # Anchor the pattern based on wildcards
+        if not pattern.startswith('%'):
+            regex_pattern = '^' + regex_pattern
+        if not pattern.endswith('%'):
+            regex_pattern = regex_pattern + '$'
+
+        compiled_patterns.append(re.compile(regex_pattern))
+
+    return compiled_patterns
+
+
+def should_exclude_file(filename, exclude_patterns):
+    """
+    Check if a filename matches any of the exclusion patterns.
+
+    Parameters:
+    -----------
+    filename : str
+        Filename to check
+    exclude_patterns : list
+        List of compiled regex patterns
+
+    Returns:
+    --------
+    bool
+        True if the file should be excluded, False otherwise
+    """
+    if not exclude_patterns:
+        return False
+
+    for pattern in exclude_patterns:
+        if pattern.search(filename):
+            return True
+
+    return False
+
+
+def process_directory(directory, root_path, file_extensions=None, exclude_patterns=None, include_metadata=True,
+                      chunk_size=10000):
     """
     Process a single directory for files.
 
@@ -224,6 +286,8 @@ def process_directory(directory, root_path, file_extensions=None, include_metada
         Root directory for relative path calculation
     file_extensions : set or None
         Set of file extensions to filter by, or None to include all files
+    exclude_patterns : list
+        List of compiled regex patterns for filename exclusion
     include_metadata : bool
         Whether to include detailed metadata
     chunk_size : int
@@ -239,6 +303,9 @@ def process_directory(directory, root_path, file_extensions=None, include_metada
     try:
         for path in directory.iterdir():
             if path.is_file() and (file_extensions is None or path.suffix.lower() in file_extensions):
+                if exclude_patterns and should_exclude_file(path.name, exclude_patterns):
+                    continue
+
                 try:
                     if include_metadata:
                         file_info = process_file(path, root_path)
@@ -270,10 +337,10 @@ def process_directory(directory, root_path, file_extensions=None, include_metada
         yield results
 
 
-def worker_function(directory, root_path, file_extensions, include_metadata):
+def worker_function(directory, root_path, file_extensions, exclude_patterns, include_metadata):
     """Worker function for multiprocessing."""
     results = []
-    for chunk in process_directory(directory, root_path, file_extensions, include_metadata):
+    for chunk in process_directory(directory, root_path, file_extensions, exclude_patterns, include_metadata):
         results.extend(chunk)
     return results
 
@@ -292,7 +359,7 @@ def find_all_directories(root_path):
     return directories
 
 
-def catalog_files(root_dir, output_csv, file_extensions=None, include_metadata=True,
+def catalog_files(root_dir, output_csv, file_extensions=None, exclude_patterns=None, include_metadata=True,
                   batch_size=100000, num_workers=None, memory_limit_gb=4):
     """
     Catalogs all files in a directory structure and exports to CSV.
@@ -306,6 +373,8 @@ def catalog_files(root_dir, output_csv, file_extensions=None, include_metadata=T
         Path where the CSV output will be saved
     file_extensions : list, optional
         List of file extensions to include. If None, includes all files
+    exclude_patterns : list, optional
+        List of SQL-like wildcard patterns for filename exclusion
     include_metadata : bool
         Whether to include detailed metadata
     batch_size : int
@@ -340,6 +409,11 @@ def catalog_files(root_dir, output_csv, file_extensions=None, include_metadata=T
     file_extensions_set = None
     if file_extensions:
         file_extensions_set = set(ext.lower() for ext in file_extensions)
+
+    # Compile exclusion patterns
+    compiled_exclude_patterns = compile_filename_exclusion_patterns(exclude_patterns)
+    if compiled_exclude_patterns:
+        logger.info(f"Using {len(compiled_exclude_patterns)} filename exclusion patterns")
 
     root_path = Path(root_dir)
 
@@ -384,6 +458,7 @@ def catalog_files(root_dir, output_csv, file_extensions=None, include_metadata=T
                 worker_function,
                 root_path=root_path,
                 file_extensions=file_extensions_set,
+                exclude_patterns=compiled_exclude_patterns,
                 include_metadata=include_metadata
             )
 
@@ -442,6 +517,9 @@ def main():
                         help='Output CSV file path (default: file_catalog.csv)')
     parser.add_argument('--extensions', '-e', nargs='+',
                         help='File extensions to include (e.g., .jpg .png), omit to include all files')
+    parser.add_argument('--exclude-filename', '-x', nargs='+',
+                        help='Exclude filenames matching these patterns (e.g., "temp%", "%backup%", ".__%"). '
+                             'Supports SQL LIKE wildcards: % (any chars), _ (single char)')
     parser.add_argument('--batch-size', '-b', type=int, default=100000,
                         help='Batch size for processing files (default: 100000)')
     parser.add_argument('--workers', '-w', type=int, default=None,
@@ -470,12 +548,16 @@ def main():
     if args.extensions:
         file_extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in args.extensions]
 
+    # Get exclude patterns
+    exclude_patterns = args.exclude_filename
+
     start_time = time.time()
 
     catalog_files(
         args.root_dir,
         args.output,
         file_extensions,
+        exclude_patterns=exclude_patterns,
         include_metadata=args.metadata,
         batch_size=args.batch_size,
         num_workers=args.workers,
